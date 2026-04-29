@@ -1,53 +1,56 @@
 #!/usr/bin/env bash
 # AI Context Hub — Demo Script
-# Run: bash demo/run.sh
+# Run from repo root: bash demo/run.sh
 set -euo pipefail
 
 HUB=$(mktemp -d)
 export AI_CONTEXT_ROOT="$HUB"
 trap 'rm -rf "$HUB"' EXIT
 
-E="node W:/home/huyuanjun/ai_wp/codex/ai-context-hub/src/cli.js"
+# Resolve CLI path relative to this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CLI="node $REPO_ROOT/src/cli.js"
 
 divider() { echo; printf '=%.0s' $(seq 1 60); echo; }
 
 divider
-echo "1. INIT — 初始化数据目录"
-$E init
+echo "1. INIT"
+$CLI init
 
 divider
-echo "2. REMEMBER — 写入记忆"
-$E remember "支付模块使用 Stripe API v2，不支持 v1 回调格式" --entity payment --confidence 1.0
-$E remember "后端部署在 AWS us-east-1，RDS 实例 db.t3.xlarge" --entity infra --entity-type module
-$E remember "张伟是前端团队 lead，负责组件库和设计系统" --entity zhang-wei --entity-type person
+echo "2. REMEMBER"
+$CLI remember "Payment module uses Stripe API v2, no v1 callbacks" --entity payment --confidence 1.0
+$CLI remember "Backend on AWS us-east-1, RDS instance db.t3.xlarge" --entity infra --entity-type module
+$CLI remember "Alice is frontend lead, owns the component library and design system" --entity alice --entity-type person
 
 divider
-echo "3. SYNC — syncing inbox → 图谱"
-$E sync
+echo "3. SYNC"
+$CLI sync
 
 divider
-echo "4. SEARCH — 关键词搜索"
-$E search "Stripe"
+echo "4. SEARCH — keyword"
+$CLI search "Stripe"
 
 divider
-echo "5. SEARCH — 语义搜索"
-$E search "数据库配置" --semantic
+echo "5. SEARCH — semantic"
+$CLI search "database config" --semantic
 
 divider
-echo "6. RELATE — 建立关系"
-$E relate --from zhang-wei --to payment --kind works_on --apply
+echo "6. RELATE"
+$CLI relate --from alice --to payment --kind works_on --apply
 
 divider
-echo "7. RELATIONS — 查询关系"
-$E relations zhang-wei
+echo "7. RELATIONS"
+$CLI relations alice
 
 divider
-echo "8. LIST — 列出所有实体"
-$E list
+echo "8. LIST"
+$CLI list
 
 divider
-echo "9. DOCTOR — 健康检查"
-$E doctor
+echo "9. DOCTOR"
+$CLI doctor
 
 divider
-echo "✅ Demo 完成"
+echo "OK"

@@ -1,72 +1,49 @@
 # AI Context Hub
 
 <p align="center">
-  <strong>One memory. Every AI tool.</strong>
+  <strong>Claude Code remembered it. Codex forgot it. This fixes that.</strong>
 </p>
 
 <p align="center">
-  <a href="#license"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="https://github.com/huyuanjun/ai-context-hub/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="https://www.npmjs.com/package/ai-context-hub"><img alt="npm" src="https://img.shields.io/badge/npm-ai--context--hub-red.svg"></a>
+  <a href="https://github.com/huyuanjun/ai-context-hub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/huyuanjun/ai-context-hub/actions/workflows/ci.yml/badge.svg"></a>
   <a href="#"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D20-green.svg"></a>
   <a href="#"><img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-brightgreen.svg"></a>
 </p>
 
-Shared memory and skills hub for AI coding tools — **Claude Code**, **Codex**, **Gemini**, **Cursor**, **Windsurf**, and other agents. Write a fact once, every AI assistant can recall it.
+AI Context Hub gives every AI coding tool a **single, shared long-term memory**. You teach Claude Code something about your codebase — Codex, Gemini, Cursor, and Windsurf all know it automatically. No more repeating yourself.
 
-- **Zero dependencies** — pure Node.js built-in modules
+- **Zero dependencies** — pure Node.js built-in modules, nothing to install
 - **Cross-platform** — Windows, macOS, Linux
-- **Token-efficient** — grep-first, never loads the full knowledge graph into context
-- **Concurrency-safe** — file-locked inbox, atomic writes
+- **Token-efficient** — ~50 tokens per query via grep-first access; never loads the full graph into context
+- **Concurrency-safe** — file-locked inbox, atomic writes; multiple tools can write simultaneously
 
 ---
 
 ## Demo
 
 ```bash
-$ ai-context remember "HA module dual-master supports single group only" --entity ha --confidence 1.0
-Wrote inbox memory: ~/ai-context/memory/inbox/manual/2026-04-29T00-00-00-000Z.jsonl
+$ ai-context remember "Payment module uses Stripe API v2, no v1 callbacks" --entity payment --confidence 1.0
+Wrote inbox memory
+
+$ ai-context remember "Backend on AWS us-east-1, RDS db.t3.xlarge" --entity infra
+Wrote inbox memory
 
 $ ai-context sync
-{
-  "merged": 1,
-  "skipped": 0,
-  "canonicalWrites": 1,
-  "graphUpdates": 1
-}
+{ "scannedFiles": 2, "added": 2 }
 
-$ ai-context search "dual-master"
-{
-  "results": [
-    {
-      "text": "HA module dual-master supports single group only",
-      "entity": "ha",
-      "source": "manual",
-      "confidence": 1
-    }
-  ],
-  "count": 1,
-  "mode": "keyword"
-}
+$ ai-context search "Stripe"
+{ "mode": "keyword", "results": [...], "count": 1 }
 
-$ ai-context search "network partition" --semantic
-{
-  "results": [
-    {
-      "text": "HA module dual-master supports single group only",
-      "entity": "ha",
-      "score": 0.73
-    }
-  ],
-  "count": 1,
-  "mode": "semantic"
-}
+$ ai-context search "database config" --semantic
+{ "mode": "semantic", "results": [{ "text": "...RDS db.t3.xlarge", "score": 0.71 }] }
 
-$ ai-context relate --from user --to ha --kind works_on --apply
-{ "from": "user", "to": "ha", "kind": "works_on", "id": "rel-001" }
-
-$ ai-context relations user
-{ "entity": "user", "relations": [{ "to": "ha", "kind": "works_on" }] }
+$ ai-context relate --from zhang-wei --to payment --kind works_on --apply
+{ "status": "added", "relation": { "from": "zhang-wei", "to": "payment", "kind": "works_on" } }
 ```
+
+Run it yourself: `bash demo/run.sh`
 
 ---
 
@@ -76,12 +53,12 @@ $ ai-context relations user
 npm install -g ai-context-hub
 ```
 
-Or run from source:
+Or run from source (no build step):
 
 ```bash
-git clone https://github.com/anthropics/ai-context-hub.git
+git clone https://github.com/huyuanjun/ai-context-hub.git
 cd ai-context-hub
-npm link
+npm link        # or just put src/cli.js on your PATH
 ```
 
 Requires Node.js >= 20.
@@ -91,63 +68,44 @@ Requires Node.js >= 20.
 ## Quick Start
 
 ```bash
-# Initialize the shared data directory (default: ~/.ai-context)
-ai-context init
-
-# Scan for existing AI tool configurations
-ai-context scan
-
-# Import existing bootstraps and skills
-ai-context import
-
-# Validate skills and generate token-efficient index
-ai-context skills validate
-ai-context skills index
-
-# Enable shared context for all detected AI tools
-ai-context enable --dry-run   # review first
-ai-context enable --apply     # then apply
+ai-context init                    # create ~/.ai-context
+ai-context scan                    # detect existing AI tool configs
+ai-context import                  # import existing bootstraps + skills
+ai-context enable --dry-run        # preview what will change
+ai-context enable --apply          # deploy shared context to all tools
 ```
 
-Override the data directory:
-
-```bash
-ai-context init --root /path/to/shared-hub
-# or: export AI_CONTEXT_ROOT=/path/to/shared-hub
-```
+Override data directory: `ai-context init --root /custom/path` or `export AI_CONTEXT_ROOT=/custom/path`
 
 ---
 
 ## How It Works
 
-```text
-   remember "fact"              sync                  search "fact"
-         │                        │                       │
-         ▼                        ▼                       ▲
-   ┌──────────┐    merge    ┌───────────┐    query   ┌─────────┐
-   │  inbox/  │ ──────────► │ canonical  │ ◄───────── │ search  │
-   │ one file │             │ + graph    │            │ keyword │
-   │ per fact │             │ (JSONL)    │            │ + TF-IDF│
-   └──────────┘             └───────────┘            └─────────┘
-                                   │
-                                   ▼
-                            ┌───────────┐
-                            │ AI tools  │
-                            │ read via  │
-                            │ bootstrap │
-                            └───────────┘
+```mermaid
+flowchart LR
+    A["🧠 remember<br/>write fact to inbox"] --> B["📥 inbox/<br/>one file per fact"]
+    B --> C["🔄 sync<br/>merge + deduplicate"]
+    C --> D["📝 canonical/<br/>markdown facts"]
+    C --> E["🔗 memory.jsonl<br/>entity-observation graph"]
+    D --> F["🔍 search<br/>keyword + TF-IDF"]
+    E --> F
+
+    G["🤖 Claude Code"] -.->|reads bootstrap| D
+    H["🤖 Codex"] -.->|reads bootstrap| D
+    I["🤖 Gemini"] -.->|reads bootstrap| D
+    J["🤖 Cursor"] -.->|reads bootstrap| D
 ```
 
-1. **`remember`** writes a fact as a single JSONL file into `inbox/` — no conflicts, ever
-2. **`sync`** merges inbox → canonical markdown + entity-observation graph
-3. **Each AI tool** discovers the hub via a bootstrap file, using `Select-String` (or `grep`) to find relevant facts **without loading the full graph**
-4. **`search`** offers both keyword (fast substring) and semantic (TF-IDF cosine similarity) search
+1. **`remember`** → writes one JSONL file per fact into `inbox/` — zero write conflicts
+2. **`sync`** → lock → deduplicate (SHA256) → merge into canonical `.md` + entity graph
+3. **AI tools** → find facts via bootstrap files using `grep`/`Select-String`, never load the full graph
+4. **`search`** → keyword (instant substring) or semantic (TF-IDF + cosine similarity)
 
 ---
 
-## AI Tool Discovery
+## AI Tool Support
 
-Running `ai-context enable --apply` writes lightweight bootstrap files:
+`ai-context enable --apply` writes lightweight bootstrap files (~350 tokens each):
 
 | Tool | Bootstrap | Skills |
 |------|-----------|--------|
@@ -156,9 +114,9 @@ Running `ai-context enable --apply` writes lightweight bootstrap files:
 | Gemini CLI | `~/.gemini/GEMINI.md` | — |
 | Cursor | `.cursor/rules/shared-ai-context.mdc` | — |
 | Windsurf | `.windsurf/rules/shared-ai-context.md` | — |
-| Agents | `~/.agents/AGENTS.md` | `~/.agents/skills/` |
+| Custom Agents | `~/.agents/AGENTS.md` | `~/.agents/skills/` |
 
-Each bootstrap is ~350 tokens and tells the AI: "grep the graph, never read it in full."
+Skills are symlinked, so a skill created once works in Claude Code, Codex, and Agents simultaneously.
 
 ---
 
@@ -166,26 +124,20 @@ Each bootstrap is ~350 tokens and tells the AI: "grep the graph, never read it i
 
 ```text
 ~/.ai-context/
-  config.json
-  registry.json
+  config.json              ← hub configuration
   memory/
-    inbox/              ← staging area, one file per fact
-      claude/
-      codex/
-      manual/
-    canonical/           ← authoritative markdown facts
-      global.md          ← hub usage guide for AI tools
-      preferences.md     ← user preferences & constraints
-      <entity>.md        ← per-entity facts
+    inbox/                 ← staging: one JSONL file per fact
+      claude/  codex/  manual/
+    canonical/             ← merged markdown, one file per entity
+      global.md            ← AI tool usage instructions
+      preferences.md       ← user constraints
+      payment.md           ← per-entity facts
     graph/
-      memory.jsonl       ← entity-observation graph (JSONL)
-      .search-index.json  ← cached TF-IDF index
-  skills/
-    <skill-name>/
-      SKILL.md
-    INDEX.md              ← token-efficient skill directory
-  logs/
-  backups/
+      memory.jsonl         ← entity-observation graph
+      .search-index.json   ← cached TF-IDF index
+  skills/                  ← shared skills (symlinked to each tool)
+  backups/                 ← backup snapshots
+  logs/                    ← structured JSONL logs
 ```
 
 ---
@@ -194,32 +146,24 @@ Each bootstrap is ~350 tokens and tells the AI: "grep the graph, never read it i
 
 | Command | Description |
 |---------|-------------|
-| `init` | Create the shared data directory |
-| `scan` | Discover existing AI tool configs |
-| `import` | Import existing bootstraps & skills |
-| `enable` | Full rollout: validate → index → adopt → link → snapshot |
-| `remember` | Write a durable fact to inbox |
+| `remember <fact>` | Write a fact to inbox |
 | `sync` | Merge inbox → canonical + graph |
-| `search` | Keyword or semantic (TF-IDF) search |
-| `context` | Print compact context for injection into AI prompts |
-| `list` | List all entities in the graph |
-| `relate` | Create entity relationship |
-| `relations` | View entity relationships |
-| `remove-relation` | Remove a relationship by ID |
+| `search <query>` | Keyword search (add `--semantic` for TF-IDF) |
+| `context` | Compact context for AI prompt injection |
+| `relate --from X --to Y --kind K` | Create entity relationship |
+| `relations <entity>` | View entity's relationships |
+| `remove-relation --id <id>` | Remove a relationship |
+| `list` | List all entities |
 | `expire` | Archive TTL-expired observations |
-| `backup create` | Create a backup snapshot |
-| `backup list` | List backups |
+| `watch` | Continuous sync + index + validate loop |
+| `schedule` | Generate OS scheduler scripts |
+| `skills validate/index` | Manage skills |
+| `link / adopt` | Deploy skills to AI tools |
+| `enable` | Full rollout: validate → index → adopt → link → snapshot |
+| `snapshot / history / restore` | Git-based version control of hub state |
+| `backup create / list` | Backup snapshots |
+| `doctor` | Full-system health check |
 | `mcp` | Export MCP config snippets |
-| `skills validate` | Validate skill frontmatter |
-| `skills index` | Generate skills INDEX.md |
-| `link` | Link skills to AI tool directories |
-| `adopt` | Replace unmanaged skills with managed |
-| `watch` | Run sync + index + validate cycle |
-| `schedule` | Generate OS scheduler scripts for background sync |
-| `snapshot` | Git commit the hub state |
-| `history` | List recent snapshots |
-| `restore` | Restore from a previous snapshot |
-| `doctor` | Health check across all subsystems |
 
 ---
 
@@ -227,34 +171,24 @@ Each bootstrap is ~350 tokens and tells the AI: "grep the graph, never read it i
 
 | Approach | Multi-Tool | Relations | Semantic Search | TTL | Token-Efficient |
 |----------|-----------|-----------|-----------------|-----|-----------------|
-| Shared `.md` file | partial | no | no | no | no |
-| Environment variables | yes | no | no | no | yes |
-| MCP memory server | partial | varies | varies | no | varies |
-| **AI Context Hub** | **yes** | **yes** | **yes** | **yes** | **yes** |
+| Shared `.md` file | partial | — | — | — | — |
+| Environment variables | yes | — | — | — | yes |
+| MCP memory server | partial | varies | varies | — | varies |
+| **AI Context Hub** | **6 tools** | **6 kinds** | **TF-IDF** | **yes** | **50 tokens/q** |
 
 ---
 
-## Design
-
-- **Zero dependencies** — `node:crypto`, `node:fs`, `node:path`, `node:os`, `node:child_process` only
-- **Inbox-first writes** — tools write facts as separate files, no conflicts
-- **Atomic sync** — lock → deduplicate → write canonical + graph → unlock
-- **Observations as objects** — `{id, text, confidence, source, createdAt, ttl}`, backward compatible with plain strings
-- **Six relation kinds** — `works_on`, `depends_on`, `related_to`, `contradicts`, `supersedes`, `has_skill`
-- **TF-IDF semantic search** — zero-dependency, cached index with checksum-based staleness detection
-- **Entity aliases** — map Chinese names to pinyin entities
-
 ## FAQ
 
-**Does it work offline?** Yes. Everything is local. No network calls.
+**Is it safe to run `enable`?** It backs up existing configs before writing. Always review with `--dry-run` first.
 
-**Can I use it without `npm link`?** Yes, if you put `src/cli.js` on your PATH directly — it has no dependencies.
+**What if two tools write the same fact?** SHA256 dedup in `sync` catches duplicates.
 
-**Will it overwrite my existing CLAUDE.md?** `enable` backs up existing files before writing. You can also review with `--dry-run` first.
+**Does it work offline?** Yes. Everything is local.
 
-**What if multiple AI tools write the same fact?** The SHA256-based deduplication in `sync` catches duplicates automatically.
+**Why not use a database?** Zero-dependency is a design constraint. JSONL + grep scales to thousands of entities without a runtime.
 
-**Where are my memories stored?** `~/.ai-context/memory/` by default. Override with `--root` or `AI_CONTEXT_ROOT`.
+**Where's my data?** `~/.ai-context/memory/` by default. Override with `--root` or `AI_CONTEXT_ROOT`.
 
 ---
 
