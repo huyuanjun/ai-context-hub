@@ -1,0 +1,42 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please provide as much detail as you can.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`ai-context --version` output"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "e.g. Windows 11, macOS 14, Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: "`node --version` output"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Steps to reproduce, expected vs actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or output
+      description: Paste command output or logs from `logs/` directory
+      render: text

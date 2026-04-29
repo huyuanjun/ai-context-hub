@@ -1,0 +1,5 @@
+.github/
+*.log
+node_modules/
+.env
+.tmp/
