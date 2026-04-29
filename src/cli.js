@@ -233,10 +233,18 @@ try {
       throw new Error(`unknown backup subcommand: ${subcommand}`);
     }
   } else if (command === "doctor") {
-    await initHub(root);
-    const report = await inspect(root, process.cwd());
-    const syncHint = hasFlag(args, "--no-sync") ? null : await syncInbox(root);
-    printJson({ ...report, sync: syncHint });
+    const initCheck = await inspect(root, process.cwd());
+    if (!initCheck.exists) {
+      printJson({
+        status: "not-initialized",
+        hint: "Run 'ai-context init' to create the shared data directory",
+        root,
+        exists: false
+      });
+    } else {
+      const syncHint = hasFlag(args, "--no-sync") ? null : await syncInbox(root);
+      printJson({ ...initCheck, sync: syncHint });
+    }
   } else {
     printHelp();
   }
@@ -244,6 +252,7 @@ try {
   const log = createLogger(root, "cli");
   log.error("command.failed", { command, error: error.message, stack: error.stack });
   console.error(`ai-context: ${error.message}`);
+  console.error("Run 'ai-context doctor' to check your hub state.");
   process.exitCode = 1;
 }
 

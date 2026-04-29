@@ -248,7 +248,10 @@ async function semanticSearch(root, query, limit, rebuild = false) {
       file: r.file,
       text: r.text,
       score: Math.round(r.score * 10000) / 10000
-    }))
+    })),
+    hint: top.length === 0 && index.docCount > 0
+      ? "No semantic matches found. TF-IDF works best with shared vocabulary — try keyword search (omit --semantic) for exact substring matching."
+      : undefined
   };
 }
 
