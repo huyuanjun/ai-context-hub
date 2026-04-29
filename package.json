@@ -44,11 +44,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/anthropics/ai-context-hub"
+    "url": "https://github.com/huyuanjun/ai-context-hub"
   },
-  "homepage": "https://github.com/anthropics/ai-context-hub#readme",
+  "homepage": "https://github.com/huyuanjun/ai-context-hub#readme",
   "bugs": {
-    "url": "https://github.com/anthropics/ai-context-hub/issues"
+    "url": "https://github.com/huyuanjun/ai-context-hub/issues"
   },
   "engines": {
     "node": ">=20"
