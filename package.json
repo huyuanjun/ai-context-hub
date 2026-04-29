@@ -4,7 +4,7 @@
   "description": "Shared memory and skills hub for multiple AI coding tools — zero dependencies, pure Node.js",
   "type": "module",
   "bin": {
-    "ai-context": "./src/cli.js"
+    "ai-context": "src/cli.js"
   },
   "files": [
     "src/",
@@ -44,7 +44,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/huyuanjun/ai-context-hub"
+    "url": "git+https://github.com/huyuanjun/ai-context-hub.git"
   },
   "homepage": "https://github.com/huyuanjun/ai-context-hub#readme",
   "bugs": {
